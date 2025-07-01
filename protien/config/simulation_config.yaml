@@ -1,0 +1,54 @@
+emin_heating_interval: 1
+emin_heating_step: 300
+emin_steps: 10
+emin_target_temp: 300
+emin_tolerance: 5 * kilojoule_per_mole / nanometer
+ff_protein: amber14-all.xml
+ff_protein_openff: ff14sb_off_impropers_0.0.3.offxml
+ff_small_molecule_openff: openff-2.0.0.offxml
+ff_water: amber14/tip3pfb.xml
+integrator_friction: 1.0
+integrator_temperature: 300.0
+integrator_timestep: 0.002
+md_anisotropic: false
+md_barostat_freq: 25
+md_harmonic_restraint: true
+md_load_state: true
+md_npt: false
+md_pressure: 1.0
+md_restrained_residues: []
+md_save_interval: 10
+md_steps: 1000
+monitor_energy_threshold: 100.0
+monitor_temp_threshold: 2.0
+monitor_window: 10
+path_amber_topology: /home/joe/projects/easy-md/protien/output/amber_top.prmtop
+path_base: /home/joe/projects/easy-md/protien
+path_emin_state: /home/joe/projects/easy-md/protien/output/emin.xml
+path_emin_structure: /home/joe/projects/easy-md/protien/output/emin.pdb
+path_ligand: /home/joe/projects/easy-md/molecules/028_Crizotinib.sdf
+path_md_checkpoint: /home/joe/projects/easy-md/protien/output/md_checkpoint_id.chk
+path_md_image: /home/joe/projects/easy-md/protien/output/md_image_id.dcd
+path_md_log: /home/joe/projects/easy-md/protien/output/md_id.log
+path_md_state: /home/joe/projects/easy-md/protien/output/md_state_id.xml
+path_md_trajectory: /home/joe/projects/easy-md/protien/output/md_trajetory_id.dcd
+path_openff_interchange: /home/joe/projects/easy-md/protien/output/openff_interchange.pdb
+path_openff_topology: /home/joe/projects/easy-md/protien/output/openff_topology.json
+path_openmm_system: /home/joe/projects/easy-md/protien/output/openmm_system.xml
+path_openmm_topology: /home/joe/projects/easy-md/protien/output/openmm_topology.pkl
+path_protein: /home/joe/projects/easy-md/protien/2GQG_one_chain_docking.pdb
+path_protein_solvated: /home/joe/projects/easy-md/protien/output/protein_solvated.pdb
+path_rmsd_ligand_output: /home/joe/projects/easy-md/protien/output/rmsd_ligand.pkl
+path_rmsd_output: /home/joe/projects/easy-md/protien/output/rmsd.pkl
+path_rmsf_output: /home/joe/projects/easy-md/protien/output/rmsf.log
+platform_name: CUDA
+platform_precision: mixed
+rmsd_ligand_selection: resname UNK
+rmsd_selection: protein and name CA
+rmsf_selection: protein and name CA
+solv_box_buffer: 2.5
+solv_ionic_strength: 0.15
+solv_model: tip3p
+solv_negative_ion: Cl-
+solv_pH: 7.0
+solv_positive_ion: Na+
