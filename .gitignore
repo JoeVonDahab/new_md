@@ -1,0 +1,38 @@
+# MD Simulation Results
+md_screening_results/
+*.dcd
+*.log
+*.chk
+*.xml
+*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (user should add their own)
+molecules/*.sdf
+protien/*.pdb
+
+# Temporary files
+*.tmp
+*.temp
