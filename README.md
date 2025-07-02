@@ -17,13 +17,17 @@ conda activate easymd
 # - Place protein PDB file in protien/ directory
 # - Place ligand SDF files in molecules/ directory
 
-# 3. Run high-throughput MD simulations
+# 3. IMPORTANT: Edit protein file path
+# Open run_high_throughput.py and update line 481:
+# protein_file = "protien/your_actual_protein_name.pdb"
+
+# 4. Run high-throughput MD simulations
 python run_high_throughput.py
 
-# 4. Analyze results with RMSD
+# 5. Analyze results with RMSD
 python enhanced_analysis_with_rmsd.py
 
-# 5. Generate energy plots
+# 6. Generate energy plots
 python plot_energy_trajectories.py
 ```
 
@@ -69,15 +73,19 @@ easy-md/
 
 ## 🔧 Configuration
 
-Edit `run_high_throughput.py` to customize:
+**IMPORTANT**: Before running simulations, edit `run_high_throughput.py` to customize:
 
 ```python
 # Simulation parameters
 md_steps = 5000          # Number of MD steps
 platform = "CUDA"       # Use "CPU" if no GPU available
-protein_file = "your_protein.pdb"
+
+# UPDATE THIS PATH to match your protein file name
+protein_file = "protien/your_actual_protein_name.pdb"  # ⚠️ CHANGE THIS!
 molecules_dir = "molecules"
 ```
+
+**⚠️ Critical Step**: Update the `protein_file` path on line 481 to match your actual protein PDB filename in the `protien/` directory.
 
 ## � Output Files
 
