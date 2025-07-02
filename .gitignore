@@ -1,12 +1,33 @@
-# MD Simulation Results
-md_screening_results/
-*.dcd
-*.log
-*.chk
-*.xml
-*.pkl
+# Ignore everything by default
+*
 
-# Python
+# Allow essential project files
+!README.md
+!.gitignore
+!setup.sh
+!pyproject.toml
+!environment.yaml
+!LICENSE
+
+# Allow main scripts
+!run_high_throughput.py
+!enhanced_analysis_with_rmsd.py
+!plot_energy_trajectories.py
+
+# Allow src/ directory and all its contents
+!src/
+!src/**
+
+# Allow input directories (but ignore their contents by default)
+!molecules/
+molecules/*
+!molecules/README.md
+
+!protien/
+protien/*
+!protien/README.md
+
+# Always ignore certain files/directories
 __pycache__/
 *.py[cod]
 *$py.class
@@ -15,24 +36,18 @@ __pycache__/
 env/
 venv/
 ENV/
-
-# Jupyter Notebook
 .ipynb_checkpoints
-
-# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Data files (user should add their own)
-molecules/*.sdf
-protien/*.pdb
-
-# Temporary files
 *.tmp
 *.temp
+md_screening_results/
+*.dcd
+*.log
+*.chk
+*.xml
+*.pkl

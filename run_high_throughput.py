@@ -463,7 +463,7 @@ class HighThroughputMD:
 def main():
     """Main function to run high-throughput MD simulations."""
     # Configuration - Update these paths for your project
-    protein_file = "protien/2GQG_one_chain_docking.pdb"  # Using the available protein file
+    protein_file = "protien/receptor_ready_5tbm.pdb"  # Using the available protein file
     molecules_dir = "molecules"
     output_dir = "md_screening_results"
     md_steps = 5000  # Adjust based on your needs (5000 = ~10ps, 50000 = ~100ps)
