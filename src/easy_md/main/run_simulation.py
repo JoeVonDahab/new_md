@@ -1,6 +1,7 @@
 """This script performs simulation of a molecular system using OpenMM."""
 
 # Standard library imports
+import os
 from collections import deque
 from pathlib import Path
 
@@ -39,6 +40,36 @@ def next_free_state(path: str) -> str:
             return str(new_path)
         num += 1
 
+def find_latest_state_file(path_template: str) -> str:
+    """Find the most recent state file based on the template path.
+    
+    Converts paths like 'md_state_id.xml' to the actual latest file 
+    like 'md_state_0.xml' if it exists.
+    """
+    p = Path(path_template)
+    parent = p.parent
+    stem, suffix = p.stem, p.suffix
+    
+    # Handle _id template by removing it and checking for numbered files
+    if stem.endswith('_id'):
+        core = stem[:-3]  # Remove '_id'
+        
+        # Look for existing files with this pattern
+        existing_files = []
+        for i in range(100):  # Check up to _99
+            candidate = parent / f'{core}_{i}{suffix}'
+            if candidate.exists():
+                existing_files.append((i, str(candidate)))
+        
+        if existing_files:
+            # Return the highest numbered file
+            latest_num, latest_path = max(existing_files, key=lambda x: x[0])
+            print(f"Found latest state file: {latest_path}")
+            return latest_path
+    
+    # If no numbered files found, return original path
+    return path_template
+
 # --------------------------------------------------------------------------
 # Main Simulation Setup
 # --------------------------------------------------------------------------
@@ -63,8 +94,11 @@ def main(config=None, starting_state_path=None, starting_checkpoint_path=None, e
         omm_system.addForce(barostat)
 
     if config['md_harmonic_restraint']:
-        force_restraints = simulation_util.setup_force_restraints(reference_structure=config['path_emin_structure'], 
-                                                                residue_indices=config['md_restrained_residues'])
+        force_restraints = simulation_util.setup_force_restraints(
+            reference_structure=config['path_emin_structure'], 
+            residue_indices=config['md_restrained_residues'],
+            force_constant=config['restraint_force_constant']
+        )
         omm_system.addForce(force_restraints)
 
     # Set up simulation using flat config structure
@@ -75,15 +109,22 @@ def main(config=None, starting_state_path=None, starting_checkpoint_path=None, e
         {'Precision': config['platform_precision']},
         config['integrator_temperature'],
         config['integrator_friction'],
-        config['integrator_timestep']
+        config['integrator_timestep'],
+        config.get('integrator_type', 'langevin_middle')
     )
 
     # --------------------------------------------------------------------------
     # Load state or checkpoint and setup reporters
     # --------------------------------------------------------------------------
     if starting_state_path is None and starting_checkpoint_path is None:
-        starting_state_path = config['path_emin_state']
-        print(f"No starting state or checkpoint provided. Using {starting_state_path}")
+        # First try to find an equilibrated MD state, then fall back to emin state
+        md_state_path = find_latest_state_file(config['path_md_state'])
+        if os.path.exists(md_state_path):
+            starting_state_path = md_state_path
+            print(f"Found equilibrated state file: {starting_state_path}")
+        else:
+            starting_state_path = config['path_emin_state']
+            print(f"No equilibrated state found. Using minimized state: {starting_state_path}")
     
     simulation = simulation_util.load_state_or_checkpoint(
         simulation, 
@@ -98,14 +139,15 @@ def main(config=None, starting_state_path=None, starting_checkpoint_path=None, e
     path_md_log = next_free_state(config['path_md_log'])
     
 
-    # Set up reporters
+    # Set up reporters with energy monitoring for early problem detection
     simulation_util.setup_reporters(
         simulation,
         path_md_log,
         path_md_trajectory,
         path_md_checkpoint,
         config['md_save_interval'],
-        config['md_steps']
+        config['md_steps'],
+        add_energy_monitor=True  # Enable frequent energy monitoring
     )
 
     # --------------------------------------------------------------------------

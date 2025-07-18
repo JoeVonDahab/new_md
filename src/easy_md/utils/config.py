@@ -36,6 +36,11 @@ DEFAULT_CONFIG = {
     "integrator_temperature": 300.0,
     "integrator_friction": 1.0,
     "integrator_timestep": 0.002,
+    "integrator_type": "langevin_middle",  # Options: "langevin_middle", "langevin"
+    
+    # Constraints
+    "add_constraints": True,       # Add HBonds constraints for stability  
+    "rigid_water": True,          # Use rigid water molecules
 
     # Solvation
     "solv_box_buffer": 2.5, # angstroms
@@ -55,6 +60,9 @@ DEFAULT_CONFIG = {
     "md_load_state": True,
     "md_restrained_residues": [],
     "md_npt": False,
+    
+    # Restraints
+    "restraint_force_constant": 100,  # kJ/mol/nm^2 - reduce to 10 for stability
     
     # Monitor
     "monitor_window": 10,
@@ -110,6 +118,12 @@ def create_config(
                 integrator_temperature (float): Temperature in Kelvin. Default: 300.0
                 integrator_friction (float): Friction coefficient in ps^-1. Default: 1.0
                 integrator_timestep (float): Time step in ps. Default: 0.002
+                integrator_type (str): Integrator type. Default: "langevin_middle"
+                                     Options: ["langevin_middle", "langevin"]
+                                     
+            Constraints Settings:
+                add_constraints (bool): Add HBonds constraints. Default: True
+                rigid_water (bool): Use rigid water molecules. Default: True
 
             Solvation Settings:
                 solv_box_buffer (float): Buffer size in angstroms. Default: 2.5
@@ -132,6 +146,10 @@ def create_config(
                 md_load_state (bool): Load previous state if available. Default: True
                 md_restrained_residues (list): List of residues to restrain. Default: []
                 md_npt (bool): Use NPT ensemble. Default: False
+                
+            Restraint Settings:
+                restraint_force_constant (float): Force constant for harmonic restraints in kJ/mol/nm^2. 
+                                                 Default: 100. Reduce to 10 for better stability.
 
             Monitoring Settings:
                 monitor_window (int): Window size for monitoring. Default: 10

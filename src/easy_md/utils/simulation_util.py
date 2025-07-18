@@ -5,6 +5,7 @@ import os
 # from openmm.app import PDBFile, ForceField,  NoCutoff, HBonds
 from openmm import(
     LangevinMiddleIntegrator,
+    LangevinIntegrator,
     MonteCarloBarostat, 
     MonteCarloAnisotropicBarostat,
     Platform,
@@ -43,7 +44,7 @@ class CheckpointReporter:
 #------------------------------------------------------------------------------
 # Helper Functions
 #------------------------------------------------------------------------------
-def setup_reporters(simulation, log_output, trajectory_output, checkpoint_output, saving_steps, total_steps):
+def setup_reporters(simulation, log_output, trajectory_output, checkpoint_output, saving_steps, total_steps, add_energy_monitor=False):
     """Configures and adds state and trajectory reporters to the simulation."""
     # Clear any existing reporters
     simulation.reporters.clear()
@@ -69,19 +70,40 @@ def setup_reporters(simulation, log_output, trajectory_output, checkpoint_output
 
     if checkpoint_output is not None:
         simulation.reporters.append(CheckpointReporter(checkpoint_output, saving_steps))
+    
+    # Add frequent energy monitoring during initial equilibration to catch problems early
+    if add_energy_monitor:
+        print("Adding frequent energy monitoring for early problem detection...")
+        monitor_args = {
+            'reportInterval': 50,  # Report every 50 steps during equilibration
+            'step': True,
+            'potentialEnergy': True,
+            'temperature': True,
+            'separator': '\t'
+        }
+        simulation.reporters.append(StateDataReporter(None, **monitor_args))  # Print to stdout
 
 
-def setup_simulation(omm_system, omm_top, platform_name, platform_properties, temperature, friction_coef, timestep):
+def setup_simulation(omm_system, omm_top, platform_name, platform_properties, temperature, friction_coef, timestep, integrator_type="langevin_middle"):
     """Sets up the simulation with specified parameters and returns the configured simulation object."""
     platform = Platform.getPlatformByName(platform_name)
     print(f"Platform being used: {platform.getName()}")
 
-    # Initialize integrator
-    integrator = LangevinMiddleIntegrator(
-        temperature,
-        friction_coef,
-        timestep
-    )
+    # Initialize integrator based on type
+    if integrator_type.lower() == "langevin_middle":
+        integrator = LangevinMiddleIntegrator(
+            temperature,
+            friction_coef,
+            timestep
+        )
+        print("Using LangevinMiddleIntegrator (BAOAB scheme) for better stability")
+    else:  # Default to regular Langevin
+        integrator = LangevinIntegrator(
+            temperature,
+            friction_coef,
+            timestep
+        )
+        print("Using LangevinIntegrator")
 
     # Create simulation
     if platform_name == "CUDA":

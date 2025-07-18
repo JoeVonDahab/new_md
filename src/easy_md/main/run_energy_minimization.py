@@ -75,7 +75,8 @@ def main(config):
         {'Precision': config['platform_precision']},
         config['integrator_temperature'],
         config['integrator_friction'],
-        config['integrator_timestep']
+        config['integrator_timestep'],
+        config.get('integrator_type', 'langevin_middle')
     )
 
     emin_simulation.context.setPositions(off_top.get_positions().to_openmm())

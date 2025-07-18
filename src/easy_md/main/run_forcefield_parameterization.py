@@ -15,7 +15,8 @@ import numpy as np
 
 # OpenMM imports
 from openmm import unit, XmlSerializer
-from openmm.app import PDBFile
+from openmm.app import PDBFile, HBonds
+import openmm
 
 # OpenFF imports
 from openff.toolkit import Molecule, Topology, ForceField
@@ -217,12 +218,66 @@ def create_openff_topology(
 # --------------------------------------------------------------------------
 # Parameterize OpenFF System. Create OpenMM System and Topology
 # --------------------------------------------------------------------------
+
+def add_constraints_to_system(omm_system, omm_top):
+    """
+    Add HBonds constraints to the OpenMM system for simulation stability.
+    This constrains all bonds involving hydrogen atoms, similar to using 
+    constraints=HBonds in OpenMM's createSystem.
+    """
+    print("Adding HBonds constraints for simulation stability...")
+    
+    # Check if system already has constraints
+    existing_constraints = omm_system.getNumConstraints()
+    if existing_constraints > 0:
+        print(f"System already has {existing_constraints} constraints, skipping constraint addition")
+        return existing_constraints
+    
+    constraints_added = 0
+    for bond in omm_top.bonds():
+        atom1, atom2 = bond
+        # Check if either atom is hydrogen
+        if atom1.element.symbol == 'H' or atom2.element.symbol == 'H':
+            # Get bond length - use typical bond lengths for different atom pairs
+            try:
+                if atom1.element.symbol == 'H':
+                    # H-X bonds
+                    if atom2.element.symbol in ['N', 'O']:
+                        bond_length = 0.101  # ~1.01 Angstrom for H-N, H-O
+                    elif atom2.element.symbol == 'C':
+                        bond_length = 0.109  # ~1.09 Angstrom for H-C
+                    elif atom2.element.symbol == 'S':
+                        bond_length = 0.134  # ~1.34 Angstrom for H-S
+                    else:
+                        bond_length = 0.1   # Default
+                else:
+                    # X-H bonds (same values)
+                    if atom1.element.symbol in ['N', 'O']:
+                        bond_length = 0.101
+                    elif atom1.element.symbol == 'C':
+                        bond_length = 0.109
+                    elif atom1.element.symbol == 'S':
+                        bond_length = 0.134
+                    else:
+                        bond_length = 0.1
+                
+                omm_system.addConstraint(atom1.index, atom2.index, bond_length)
+                constraints_added += 1
+                
+            except Exception as e:
+                print(f"Warning: Could not add constraint for bond {atom1.index}-{atom2.index}: {e}")
+                continue
+    
+    print(f"Added {constraints_added} HBonds constraints to the system")
+    return constraints_added
+
 @time_tracker
 def save_openmm_system_topology(interchange, 
                                 openff_interchange_path: str, 
                                 openmm_topology_path: str, 
                                 openmm_system_path: str,
-                                print_detailed_info):
+                                print_detailed_info,
+                                config=None):
     
     print("\n=== Converting to OpenMM System and Topology ===")
     try:
@@ -233,6 +288,10 @@ def save_openmm_system_topology(interchange,
             pickle.dump(omm_top, f)
 
         omm_system = interchange.to_openmm()
+        
+        # Add HBonds constraints for simulation stability if enabled
+        if config.get('add_constraints', True):
+            add_constraints_to_system(omm_system, omm_top)
 
         with open(openmm_system_path, 'w') as xml_file:
             xml_file.write(XmlSerializer.serialize(omm_system))
@@ -292,7 +351,8 @@ def main(config, print_detailed_info=False):
                                 config['path_openff_interchange'],
                                 config['path_openmm_topology'],
                                 config['path_openmm_system'],
-                                print_detailed_info)
+                                print_detailed_info,
+                                config)
 
 if __name__ == "__main__":
     main()

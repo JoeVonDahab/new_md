@@ -4,6 +4,21 @@ High-throughput molecular dynamics simulation script for drug screening.
 
 This script processes all molecules in the molecules/ folder, runs MD simulations
 for each, and compiles results into a ranked CSV file based on binding affinity.
+
+STABILITY FIXES IMPLEMENTED:
+- Reduced timestep to 1 fs (from 2 fs) for better integrator stability
+- Increased energy minimization steps to 5000 (from 10) 
+- Added gradual heating in 25K increments (from 300K jump)
+- Reduced restraint force constant to 10 kJ/mol/nm² (from 100) for less aggressive restraints
+- Added HBonds constraints to all hydrogen-containing bonds for stability
+- Improved state file resolution to load equilibrated states when available
+- Added frequent energy monitoring during equilibration to catch problems early
+- Uses LangevinMiddleIntegrator (BAOAB scheme) for better stability
+
+USAGE:
+- Normal run: python run_high_throughput.py
+- Test run (20 ps): python run_high_throughput.py --test
+- Custom steps: python run_high_throughput.py --md_steps 50000
 """
 
 import os
@@ -273,7 +288,7 @@ class HighThroughputMD:
         start_time = time.time()
         
         try:
-            # Create configuration
+            # Create configuration with stability fixes
             config = create_config(
                 protein_file=self.protein_file,
                 ligand_file=str(sdf_file),
@@ -281,15 +296,31 @@ class HighThroughputMD:
                 output_dir=str(output_dir / "output"),
                 config_dir=str(output_dir / "config"),
                 
-                # MD simulation settings
-                md_steps=self.md_steps,
-                md_save_interval=100,  # Save every 100 steps
+                # INTEGRATOR: Use safer settings for equilibration 
+                integrator_timestep=0.001,  # 1 fs timestep for stability
+                integrator_friction=1.0,    # Keep stable friction
                 
-                # Platform settings
+                # ENERGY MINIMIZATION: More thorough minimization
+                emin_steps=5000,            # Increase from 10 to 5000 steps
+                emin_tolerance="10 * kilojoule_per_mole / nanometer",
+                emin_heating_step=25,       # Heat in 25K increments instead of 300K
+                emin_heating_interval=1000,  # More steps per heating interval
+                
+                # MD SIMULATION: Conservative settings for equilibration
+                md_steps=self.md_steps,
+                md_save_interval=max(100, self.md_steps // 500),  # Reasonable save frequency
+                md_npt=False,               # Start with NVT equilibration
+                
+                # RESTRAINTS: Weaker force constants to prevent instabilities  
+                md_harmonic_restraint=True,
+                restraint_force_constant=10,  # Reduce from default 100 to 10 kJ/mol/nm²
+                md_restrained_residues=[],    # Apply to all residues initially
+                
+                # PLATFORM: Keep user settings but ensure mixed precision
                 platform_name=self.platform_name,
                 platform_precision="mixed",
                 
-                # Analysis settings
+                # ANALYSIS: Keep as specified
                 rmsd_ligand_selection="resname UNK",
                 rmsd_selection="protein and name CA",
             )
@@ -339,7 +370,7 @@ class HighThroughputMD:
         
         return result
     
-    def run_all_simulations(self) -> None:
+    def run_all_simulations(self, test_single_molecule=False) -> None:
         """Run simulations for all molecules in the directory."""
         sdf_files = self.get_molecule_files()
         
@@ -350,6 +381,20 @@ class HighThroughputMD:
         print(f"Found {len(sdf_files)} molecules to process:")
         for sdf_file in sdf_files:
             print(f"  - {self.extract_molecule_name(sdf_file)}")
+        
+        # If testing, only run the first molecule (or find Gilteritinib)
+        if test_single_molecule:
+            # Try to find Gilteritinib first, otherwise use first molecule
+            test_molecule = None
+            for sdf_file in sdf_files:
+                if "gilteritinib" in self.extract_molecule_name(sdf_file).lower():
+                    test_molecule = sdf_file
+                    break
+            if test_molecule is None:
+                test_molecule = sdf_files[0]
+            
+            sdf_files = [test_molecule]
+            print(f"\n🧪 TEST MODE: Only processing {self.extract_molecule_name(test_molecule)}")
         
         # Process each molecule
         for i, sdf_file in enumerate(sdf_files, 1):
@@ -362,11 +407,26 @@ class HighThroughputMD:
             
             # Save intermediate results
             self.save_results()
+            
+            # In test mode, break after first molecule if it succeeded
+            if test_single_molecule and result.success:
+                print(f"\n✅ TEST SUCCESS: {result.molecule_name} completed without NaN errors!")
+                print(f"   Final energy: {result.final_energy:.2f} kJ/mol")
+                print(f"   Average energy: {result.average_energy:.2f} kJ/mol") 
+                print(f"   Binding score: {result.binding_score:.4f}")
+                print(f"   You can now run the full batch with confidence!")
+                break
+            elif test_single_molecule and not result.success:
+                print(f"\n❌ TEST FAILED: {result.molecule_name} encountered errors:")
+                print(f"   Error: {result.error_message}")
+                print(f"   Check the output logs for more details.")
+                break
         
-        print(f"\n{'='*70}")
-        print("All simulations completed!")
-        print(f"{'='*70}")
-        self.print_summary()
+        if not test_single_molecule:
+            print(f"\n{'='*70}")
+            print("All simulations completed!")
+            print(f"{'='*70}")
+            self.print_summary()
     
     def save_results(self) -> None:
         """Save results to CSV and JSON files."""
@@ -462,11 +522,33 @@ class HighThroughputMD:
 
 def main():
     """Main function to run high-throughput MD simulations."""
+    import sys
+    
+    # Check for test mode
+    test_mode = '--test' in sys.argv or '--md_steps' in sys.argv
+    
     # Configuration - Update these paths for your project
-    protein_file = "protien/receptor_ready_5tbm.pdb"  # Using the available protein file
+    protein_file = "protien/LRRK2_Monomer_8fo7.pdb"  # Using the available protein file
     molecules_dir = "molecules"
     output_dir = "md_screening_results"
-    md_steps = 5000  # Adjust based on your needs (5000 = ~10ps, 50000 = ~100ps)
+    
+    # Use short test run for stability testing, or full production run
+    if test_mode:
+        md_steps = 20000      # ~20 ps at 1 fs for testing stability
+        print("Running in TEST MODE with short simulations")
+    else:
+        md_steps = 5000000    # Full production length  
+        print("Running in PRODUCTION MODE")
+        
+    # Parse command line for custom md_steps
+    if '--md_steps' in sys.argv:
+        try:
+            md_steps_idx = sys.argv.index('--md_steps')
+            md_steps = int(sys.argv[md_steps_idx + 1])
+            print(f"Using custom md_steps: {md_steps}")
+        except (IndexError, ValueError):
+            print("Invalid --md_steps argument, using default")
+    
     platform = "CUDA"  # Use "CPU" if no GPU available
     
     print("Easy-MD High-Throughput Screening Pipeline")
@@ -476,6 +558,8 @@ def main():
     print(f"Output directory: {output_dir}")
     print(f"MD steps: {md_steps}")
     print(f"Platform: {platform}")
+    if test_mode:
+        print("⚠️  TEST MODE: Using conservative settings for stability")
     print("=" * 50)
     
     # Create and run high-throughput MD
@@ -487,7 +571,8 @@ def main():
         platform_name=platform
     )
     
-    htmd.run_all_simulations()
+    # Run in test mode if specified
+    htmd.run_all_simulations(test_single_molecule=test_mode)
 
 if __name__ == "__main__":
     main()

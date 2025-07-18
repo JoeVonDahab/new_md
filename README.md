@@ -18,7 +18,7 @@ conda activate easymd
 # - Place ligand SDF files in molecules/ directory
 
 # 3. IMPORTANT: Edit protein file path
-# Open run_high_throughput.py and update line 481:
+# Open run_high_throughput.py and update line 573:
 # protein_file = "protien/your_actual_protein_name.pdb"
 
 # 4. Run high-throughput MD simulations
